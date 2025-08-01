@@ -2,19 +2,29 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/blogs', [BlogController::class, 'index'])->name('blog.index');
+Route::get('admin/blogs', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blogs/create/', [BlogController::class, 'create'])->name('blog.create');
 Route::post('/blogs/store', [BlogController::class, 'store'])->name('blog.store');
 Route::get('/blogs/{id}/detail', [BlogController::class, 'show'])->name('blog.show');
 Route::get('/blogs/{id}/edit', [BlogController::class, 'edit'])->name('blog.edit');
 Route::patch('/blogs/{id}/update', [BlogController::class, 'update'])->name('blog.update');
 Route::delete('/blogs/{id}/delete', [BlogController::class, 'delete'])->name('blog.delete');
+Route::get('/blogs/trash', [BlogController::class, 'trash'])->name('blog.trash');
+Route::get('/blogs/{id}/restore', [BlogController::class, 'restore'])->name('blog.restore');
+
+Route::get('/users', [UserController::class, 'index'])->name('user.index');
+Route::get('/phones', [PhoneController::class, 'index'])->name('phones.index');
+Route::get('/blogs', [BlogController::class, 'homepage'])->name('blogs.homepage');
+Route::get('/blogs/{id}', [BlogController::class, 'detail'])->name('blogs.detail');
+
 
 // Route::resource('/blog', PostController::class);
 
