@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Tag;
 use App\Models\Blog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Request as FacadesRequest;
 
@@ -22,19 +24,23 @@ class BlogController extends Controller
         
 
         // Elequent ORM
-        $blogs = Blog::where('title', 'LIKE', '%' . $title . '%')->orderBy('created_at', 'desc')->paginate(10);
+
+        $user = Auth::user();
+        $blogs = Blog::with(['tags', 'comments'])->when($user->role !== 'admin', function ($query)use($user) {
+            $query->where('user_id', $user->id);
+        })->where('title', 'LIKE', '%' . $title . '%')->orderBy('created_at', 'desc')->paginate(10);
         return view('blog', ['blogs' => $blogs, 'title' => $title]);
 
     }
 
     public function create()
     {
-        return view('/blogs/create');
+        $tags = Tag::all();
+        return view('/blogs/create', compact('tags'));
     }
 
     public function store(Request $request)
     {
-
         $request->validate([
             'title' => 'required|unique:blogs|max:20',
             'description' => 'required',
@@ -52,14 +58,14 @@ class BlogController extends Controller
         // ]);
 
         // Elequent ORM
-        $id_min = User::pluck('id')->min();
-        $id_max = User::pluck('id')->max();
+        $user = Auth::user();
         $data = Blog::create([
             'title' => $request->title,
             'descripsi' => $request->description,
             'status' => $request->status,
-            'user_id' => fake()->numberBetween($id_min, $id_max)
+            'user_id' => $user->id
         ]);
+        $data->tags()->attach($request->tags);
 
         if (!$data) {
             return redirect()->route('blog.index')->with('error', 'Blog tidak berhasil di input');
@@ -87,12 +93,14 @@ class BlogController extends Controller
         // $blog = DB::table('blogs')->where('id', $id)->first();
 
         // Elequent ORM
-        $blog = Blog::findOrFail($id);
-        return view('/blogs/edit', ['blog' => $blog]);
+        $blog = Blog::with('tags')->findOrFail($id);
+        $tags = Tag::all();
+        return view('blogs/edit', ['blog' => $blog, 'tags' => $tags]);
     }
 
     public function update($id, Request $request) 
     {
+
         $request->validate([
             'title' => 'required|unique:blogs,title,' .$id. '|max:255',
             'description' => 'required',
@@ -110,14 +118,14 @@ class BlogController extends Controller
         $blog = Blog::findOrFail($id);
         $blog->update();
 
-        $id_min = User::pluck('id')->min();
-        $id_max = User::pluck('id')->max();
+        $user = Auth::user();
         $data = Blog::create([
             'title' => $request->title,
             'descripsi' => $request->description,
             'status' => $request->status,
-            'user_id' => fake()->numberBetween($id_min, $id_max)
+            'user_id' => $user->id
         ]);
+        $blog->tags()->sync($request->tags);
         return redirect()->route('blog.index')->with('success', 'Data berhasil di edit');
     }
 
@@ -154,7 +162,7 @@ class BlogController extends Controller
 
     public function detail($id)
     {
-        $blog = Blog::with('user')->findOrFail($id);
+        $blog = Blog::with(['user', 'comments', 'tags'])->findOrFail($id);
         return view('blogs.show', compact('blog'));
     }
 }
